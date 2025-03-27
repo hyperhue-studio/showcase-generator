@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Showcase de Noticias</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Generador de Showcase de Noticias</h1>
+        <form id="urlsForm">
+            <div class="url-input-group">
+                <label for="url1">URL 1</label>
+                <div class="input-wrapper">
+                    <input type="url" id="url1" required>
+                    <button type="button" class="paste-btn" onclick="pasteFromClipboard('url1')">📋</button>
+                </div>
+            </div>
+            <div class="url-input-group">
+                <label for="url2">URL 2</label>
+                <div class="input-wrapper">
+                    <input type="url" id="url2" required>
+                    <button type="button" class="paste-btn" onclick="pasteFromClipboard('url2')">📋</button>
+                </div>
+            </div>
+            <div class="url-input-group">
+                <label for="url3">URL 3</label>
+                <div class="input-wrapper">
+                    <input type="url" id="url3" required>
+                    <button type="button" class="paste-btn" onclick="pasteFromClipboard('url3')">📋</button>
+                </div>
+            </div>
+
+            <button type="submit" class="generate-btn">Generar Noticias</button>
+        </form>
+
+        <div id="result" class="result">
+            <div class="row" id="articleRow">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function pasteFromClipboard(fieldId) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    document.getElementById(fieldId).value = text;
+                } else {
+                    alert("No hay contenido en el portapapeles.");
+                }
+            } catch (error) {
+                alert("Error al pegar desde el portapapeles: " + error.message);
+            }
+        }
+
+        document.getElementById("urlsForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+            const urls = [
+                document.getElementById("url1").value,
+                document.getElementById("url2").value,
+                document.getElementById("url3").value
+            ];
+
+            try {
+                const response = await fetch('http://localhost:3000/generate-copies', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ urls })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById("result").innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.errors && data.errors.length > 0) {
+                    let errorMessages = '';
+                    data.errors.forEach(err => {
+                        errorMessages += `<p class="error">${err}</p>`;
+                    });
+                    document.getElementById("result").innerHTML = `<h2>Errores:</h2>${errorMessages}`;
+                    return;
+                }
+
+                document.getElementById("articleRow").innerHTML = '';
+
+                data.articles.forEach((article, index) => {
+                    const articleBlock = document.createElement("div");
+                    articleBlock.classList.add("article");
+
+                    articleBlock.innerHTML = `
+                        <div class="article-actions">
+                            <button class="copy-btn" onclick="copyText('title${index + 1}')">Título</button>
+                            <button class="copy-btn" onclick="copyText('url${index + 1}')">URL</button>
+                            <button class="copy-btn" onclick="copyText('image${index + 1}')">Imagen</button>
+                            <button class="copy-btn" onclick="copyText('category${index + 1}')">Categoría</button>
+                            ${index === 0 ? `<button class="copy-btn" onclick="copyText('summary1')">Resumen</button>` : ''}
+                        </div>
+                        <div class="article-data">
+                            <span id="title${index + 1}" hidden>${article.title}</span>
+                            <a href="${article.url}" id="url${index + 1}" hidden>${article.url}</a>
+                            <img id="image${index + 1}" src="${article.imageUrl}" alt="Imagen" hidden>
+                            <span id="category${index + 1}" hidden>${article.category}</span>
+                            <span id="summary${index + 1}" hidden>${article.summary || 'No disponible'}</span>
+                        </div>
+                    `;
+
+                    document.getElementById("articleRow").appendChild(articleBlock);
+                });
+
+            } catch (error) {
+                document.getElementById("result").innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        });
+
+        function copyText(elementId) {
+            let text;
+            if (elementId.includes('url')) {
+                const urlIndex = elementId.replace('url', '');
+                text = document.getElementById(`url${urlIndex}`).value;
+            } else {
+                const element = document.getElementById(elementId);
+                text = element.tagName === 'A' ? element.href : element.textContent || element.src;
+            }
+
+            navigator.clipboard.writeText(text).catch(err => {
+                console.error('Error copying text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
