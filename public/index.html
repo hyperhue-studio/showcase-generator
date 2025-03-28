@@ -64,7 +64,11 @@
             ];
 
             try {
-                const response = await fetch('http://localhost:3000/generate-copies', {
+                const baseUrl = window.location.hostname === 'localhost' 
+                    ? 'http://localhost:3000' 
+                    : 'https://showcase-generator.vercel.app';
+                    
+                const response = await fetch(`${baseUrl}/generate-copies`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
